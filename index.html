@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Algorithm Visualizer</title>
+    <title>Algorithm Visualizer - Pathfinding & Clustering</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -32,12 +33,47 @@
             -webkit-text-fill-color: transparent;
         }
 
+        .algorithm-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        .tab-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .algorithm-section {
+            display: none;
+        }
+
+        .algorithm-section.active {
+            display: block;
+        }
+
         .controls {
             display: flex;
             justify-content: center;
             gap: 15px;
             margin-bottom: 20px;
             flex-wrap: wrap;
+            align-items: center;
         }
 
         button {
@@ -66,6 +102,11 @@
             color: white;
         }
 
+        .generate-btn {
+            background: linear-gradient(45deg, #FF9800, #F57C00);
+            color: white;
+        }
+
         .algo-btn.active {
             background: linear-gradient(45deg, #FF9800, #F57C00);
             transform: translateY(-2px);
@@ -83,17 +124,37 @@
             transform: none;
         }
 
-        .grid-container {
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        label {
+            font-weight: 500;
+            color: #333;
+        }
+
+        input[type="number"] {
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            width: 80px;
+            font-size: 14px;
+        }
+
+        .canvas-container {
             display: flex;
             justify-content: center;
             margin: 20px 0;
         }
 
-        #grid {
+        canvas {
             border: 3px solid #333;
             border-radius: 10px;
             cursor: crosshair;
             box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            background: white;
         }
 
         .legend {
@@ -102,6 +163,7 @@
             gap: 20px;
             margin: 20px 0;
             font-size: 14px;
+            flex-wrap: wrap;
         }
 
         .legend-item {
@@ -157,36 +219,52 @@
             color: #333;
         }
 
-        .instructions ol {
-            margin: 10px 0;
-            padding-left: 20px;
+        .progress-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin: 20px 0;
         }
 
-        .algorithm-info {
-            background: #fff3cd;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 15px 0;
-            border-left: 4px solid #ffc107;
-            font-size: 14px;
+        .progress-bar {
+            width: 300px;
+            height: 10px;
+            background: #f0f0f0;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
         }
 
         @media (max-width: 768px) {
             .container {
                 padding: 15px;
             }
-            
+
             h1 {
                 font-size: 2em;
             }
-            
+
             .controls {
                 flex-direction: column;
                 align-items: center;
             }
-            
-            button {
-                width: 200px;
+
+            .algorithm-tabs {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            canvas {
+                width: 100%;
+                max-width: 400px;
+                height: 400px;
             }
         }
     </style>
@@ -194,294 +272,190 @@
 <body>
     <div class="container">
         <h1>Algorithm Visualizer</h1>
-        
-        <div class="instructions">
-            <h3>How to use:</h3>
-            <ol>
-                <li>Click once to place the <strong style="color: green;">start</strong> point</li>
-                <li>Click again to place the <strong style="color: red;">end</strong> point</li>
-                <li>Click and drag to draw <strong style="color: darkblue;">walls</strong></li>
-                <li>Select an algorithm and click "Start" to visualize</li>
-                <li>Use "Clear" to reset the grid</li>
-            </ol>
+
+        <div class="algorithm-tabs">
+            <button class="tab-btn active" onclick="switchTab('pathfinding')">Pathfinding Algorithms</button>
+            <button class="tab-btn" onclick="switchTab('clustering')">K-Means Clustering</button>
         </div>
 
-        <div class="controls">
-            <button class="algo-btn active" onclick="selectAlgorithm('dijkstra')">Dijkstra</button>
-            <button class="algo-btn" onclick="selectAlgorithm('astar')">A* (A-Star)</button>
-            <button class="start-btn" onclick="startVisualization()">Start Visualization</button>
-            <button class="clear-btn" onclick="clearGrid()">Clear Grid</button>
+        <!-- Pathfinding Section -->
+        <div id="pathfinding" class="algorithm-section active">
+            <div class="instructions">
+                <h3>Pathfinding Instructions:</h3>
+                <ol>
+                    <li>Click once to place the <strong style="color: green;">start</strong> point</li>
+                    <li>Click again to place the <strong style="color: red;">end</strong> point</li>
+                    <li>Click and drag to draw <strong style="color: darkblue;">walls</strong></li>
+                    <li>Select an algorithm and click "Start" to visualize</li>
+                    <li>Use "Clear" to reset the grid</li>
+                </ol>
+            </div>
+
+            <div class="controls">
+                <button class="algo-btn active" onclick="selectPathfindingAlgorithm('dijkstra')">Dijkstra</button>
+                <button class="algo-btn" onclick="selectPathfindingAlgorithm('astar')">A* (A-Star)</button>
+                <button class="start-btn" onclick="startPathfinding()">Start Visualization</button>
+                <button class="clear-btn" onclick="clearPathfindingGrid()">Clear Grid</button>
+            </div>
+
+            <div class="canvas-container">
+                <canvas id="pathfindingGrid" width="600" height="500"></canvas>
+            </div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: green;"></div>
+                    <span>Start</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: red;"></div>
+                    <span>End</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: darkblue;"></div>
+                    <span>Wall</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: skyblue;"></div>
+                    <span>Visited</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: yellow;"></div>
+                    <span>Path</span>
+                </div>
+            </div>
         </div>
 
-        <div id="algorithm-info" class="algorithm-info">
-            <strong>Dijkstra's Algorithm:</strong> Finds the shortest path by exploring all nodes uniformly. Guarantees the optimal path but may explore more nodes than necessary.
+        <!-- K-Means Section -->
+        <div id="clustering" class="algorithm-section">
+            <div class="instructions">
+                <h3>K-Means Instructions:</h3>
+                <ol>
+                    <li>Set the number of clusters (K) and maximum iterations</li>
+                    <li>Click on the canvas to add data points manually</li>
+                    <li>Or use "Generate Random Points" to create sample data</li>
+                    <li>Click "Run K-Means" to start the clustering algorithm</li>
+                    <li>Watch as points get grouped into clusters iteratively</li>
+                    <li>Use "Clear Canvas" to start over</li>
+                </ol>
+            </div>
+
+            <div class="controls">
+                <div class="input-group">
+                    <label for="clusters">Clusters (K):</label>
+                    <input type="number" id="clusters" value="3" min="1" max="8">
+                </div>
+
+                <div class="input-group">
+                    <label for="maxIter">Max Iterations:</label>
+                    <input type="number" id="maxIter" value="10" min="1" max="50">
+                </div>
+
+                <button class="generate-btn" onclick="generateRandomPoints()">Generate Random Points</button>
+                <button class="start-btn" onclick="runKMeans()">Run K-Means</button>
+                <button class="clear-btn" onclick="clearKMeansCanvas()">Clear Canvas</button>
+            </div>
+
+            <div class="progress-container">
+                <span>Progress:</span>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <span id="iterationText">0/0</span>
+            </div>
+
+            <div class="canvas-container">
+                <canvas id="kmeansCanvas" width="600" height="500"></canvas>
+            </div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ff6b6b;"></div>
+                    <span>Cluster 1</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #00ff00;"></div>
+                    <span>Cluster 2</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #45b7d1;"></div>
+                    <span>Cluster 3</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #96ceb4;"></div>
+                    <span>Cluster 4</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #feca57;"></div>
+                    <span>Cluster 5</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ff9ff3;"></div>
+                    <span>Cluster 6</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #54a0ff;"></div>
+                    <span>Cluster 7</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #5f27cd;"></div>
+                    <span>Cluster 8</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #000000; border: 2px solid #333;">⨯</div>
+                    <span>Centroids</span>
+                </div>
+            </div>
         </div>
 
-        <div class="grid-container">
-            <canvas id="grid" width="800" height="800"></canvas>
-        </div>
-
-        <div class="legend">
-            <div class="legend-item">
-                <div class="legend-color" style="background: green;"></div>
-                <span>Start</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color" style="background: red;"></div>
-                <span>End</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color" style="background: darkblue;"></div>
-                <span>Wall</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color" style="background: skyblue;"></div>
-                <span>Visited</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color" style="background: yellow;"></div>
-                <span>Path</span>
-            </div>
-        </div>
-
-        <div id="status" class="status"></div>
+        <div id="status" class="status">Select an algorithm tab to get started</div>
     </div>
 
     <script>
-        const canvas = document.getElementById('grid');
-        const ctx = canvas.getContext('2d');
+        // Global variables
+        let currentTab = 'pathfinding';
+        let isRunning = false;
+
+        // Pathfinding variables
+        const pathfindingCanvas = document.getElementById('pathfindingGrid');
+        const pathfindingCtx = pathfindingCanvas.getContext('2d');
         const ROWS = 40;
-        const GAP = 800 / ROWS;
-        
-        let grid = [];
+        const GAP = 600 / ROWS;
+
+        let pathfindingGrid = [];
         let start = null;
         let end = null;
         let walls = [];
         let isDrawing = false;
-        let currentAlgorithm = 'dijkstra';
-        let isRunning = false;
+        let currentPathfindingAlgorithm = 'dijkstra';
 
-        // Algorithm information
-        const algorithmInfo = {
-            'dijkstra': '<strong>Dijkstra\'s Algorithm:</strong> Finds the shortest path by exploring all nodes uniformly. Guarantees the optimal path but may explore more nodes than necessary.',
-            'astar': '<strong>A* Algorithm:</strong> Uses a heuristic (Manhattan distance) to guide the search toward the goal. Generally faster than Dijkstra and still guarantees the optimal path.'
-        };
+        // K-Means variables
+        const kmeansCanvas = document.getElementById('kmeansCanvas');
+        const kmeansCtx = kmeansCanvas.getContext('2d');
+        let kmeansPoints = [];
+        let kmeansCentroids = [];
+        const colors = ['#ff6b6b', '#00ff00', '#45b7d1', '#96ceb4', '#feca57', '#ff9ff3', '#54a0ff', '#5f27cd'];
 
-        // Pathfinding algorithms implemented in JavaScript
-        function heuristic(a, b) {
-            return Math.abs(a.row - b.row) + Math.abs(a.col - b.col);
-        }
+        // Tab switching
+        function switchTab(tabName) {
+            currentTab = tabName;
+            document.querySelectorAll('.algorithm-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
 
-        function getNeighbors(node, gridData) {
-            const neighbors = [];
-            const directions = [
-                { row: -1, col: 0 }, // up
-                { row: 1, col: 0 },  // down
-                { row: 0, col: -1 }, // left
-                { row: 0, col: 1 }   // right
-            ];
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
 
-            for (const dir of directions) {
-                const newRow = node.row + dir.row;
-                const newCol = node.col + dir.col;
-                
-                if (newRow >= 0 && newRow < ROWS && newCol >= 0 && newCol < ROWS) {
-                    const neighbor = gridData[newRow][newCol];
-                    if (neighbor.type !== 'wall') {
-                        neighbors.push(neighbor);
-                    }
-                }
+            if (tabName === 'pathfinding') {
+                setStatus('Click to place start point', 'info');
+                initPathfindingGrid();
+            } else {
+                setStatus('Click on the canvas to add points or generate random points to get started', 'info');
+                clearKMeansCanvas();
             }
-            return neighbors;
-        }
-
-        function dijkstraAlgorithm(gridData, startPos, endPos) {
-            // Initialize distances
-            for (let i = 0; i < ROWS; i++) {
-                for (let j = 0; j < ROWS; j++) {
-                    gridData[i][j].distance = Infinity;
-                    gridData[i][j].previous = null;
-                    gridData[i][j].visited = false;
-                }
-            }
-
-            const startNode = gridData[startPos.row][startPos.col];
-            const endNode = gridData[endPos.row][endPos.col];
-            startNode.distance = 0;
-
-            const unvisited = [];
-            const visitedOrder = [];
-
-            // Add all nodes to unvisited
-            for (let i = 0; i < ROWS; i++) {
-                for (let j = 0; j < ROWS; j++) {
-                    unvisited.push(gridData[i][j]);
-                }
-            }
-
-            while (unvisited.length > 0) {
-                // Sort by distance and get closest node
-                unvisited.sort((a, b) => a.distance - b.distance);
-                const current = unvisited.shift();
-
-                if (current.distance === Infinity) break;
-                if (current === endNode) break;
-
-                current.visited = true;
-                if (current.type !== 'start' && current.type !== 'end') {
-                    visitedOrder.push({ row: current.row, col: current.col });
-                }
-
-                const neighbors = getNeighbors(current, gridData);
-                for (const neighbor of neighbors) {
-                    if (!neighbor.visited) {
-                        const tentativeDistance = current.distance + 1;
-                        if (tentativeDistance < neighbor.distance) {
-                            neighbor.distance = tentativeDistance;
-                            neighbor.previous = current;
-                        }
-                    }
-                }
-            }
-
-            // Reconstruct path
-            const path = [];
-            let current = endNode;
-            while (current) {
-                path.unshift({ row: current.row, col: current.col });
-                current = current.previous;
-            }
-
-            return {
-                success: path.length > 1,
-                path: path.length > 1 ? path : [],
-                visited: visitedOrder,
-                message: path.length > 1 ? "Path found!" : "No path found!"
-            };
-        }
-
-        function aStarAlgorithm(gridData, startPos, endPos) {
-            // Initialize scores
-            for (let i = 0; i < ROWS; i++) {
-                for (let j = 0; j < ROWS; j++) {
-                    gridData[i][j].gScore = Infinity;
-                    gridData[i][j].fScore = Infinity;
-                    gridData[i][j].previous = null;
-                }
-            }
-
-            const startNode = gridData[startPos.row][startPos.col];
-            const endNode = gridData[endPos.row][endPos.col];
-            
-            startNode.gScore = 0;
-            startNode.fScore = heuristic(startNode, endNode);
-
-            const openSet = [startNode];
-            const visitedOrder = [];
-
-            while (openSet.length > 0) {
-                // Get node with lowest fScore
-                openSet.sort((a, b) => a.fScore - b.fScore);
-                const current = openSet.shift();
-
-                if (current === endNode) break;
-
-                if (current.type !== 'start' && current.type !== 'end') {
-                    visitedOrder.push({ row: current.row, col: current.col });
-                }
-
-                const neighbors = getNeighbors(current, gridData);
-                for (const neighbor of neighbors) {
-                    const tentativeGScore = current.gScore + 1;
-
-                    if (tentativeGScore < neighbor.gScore) {
-                        neighbor.previous = current;
-                        neighbor.gScore = tentativeGScore;
-                        neighbor.fScore = tentativeGScore + heuristic(neighbor, endNode);
-
-                        if (!openSet.includes(neighbor)) {
-                            openSet.push(neighbor);
-                        }
-                    }
-                }
-            }
-
-            // Reconstruct path
-            const path = [];
-            let current = endNode;
-            while (current) {
-                path.unshift({ row: current.row, col: current.col });
-                current = current.previous;
-            }
-
-            return {
-                success: path.length > 1,
-                path: path.length > 1 ? path : [],
-                visited: visitedOrder,
-                message: path.length > 1 ? "Path found!" : "No path found!"
-            };
-        }
-
-        // Initialize grid
-        function initGrid() {
-            grid = [];
-            for (let i = 0; i < ROWS; i++) {
-                grid[i] = [];
-                for (let j = 0; j < ROWS; j++) {
-                    grid[i][j] = {
-                        row: i,
-                        col: j,
-                        type: 'empty'
-                    };
-                }
-            }
-            drawGrid();
-        }
-
-        function drawGrid() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            for (let i = 0; i < ROWS; i++) {
-                for (let j = 0; j < ROWS; j++) {
-                    const cell = grid[i][j];
-                    const x = j * GAP;
-                    const y = i * GAP;
-                    
-                    // Set colors based on cell type
-                    switch (cell.type) {
-                        case 'start':
-                            ctx.fillStyle = 'green';
-                            break;
-                        case 'end':
-                            ctx.fillStyle = 'red';
-                            break;
-                        case 'wall':
-                            ctx.fillStyle = 'darkblue';
-                            break;
-                        case 'visited':
-                            ctx.fillStyle = 'skyblue';
-                            break;
-                        case 'path':
-                            ctx.fillStyle = 'yellow';
-                            break;
-                        default:
-                            ctx.fillStyle = 'white';
-                    }
-                    
-                    ctx.fillRect(x, y, GAP, GAP);
-                    ctx.strokeStyle = 'gray';
-                    ctx.strokeRect(x, y, GAP, GAP);
-                }
-            }
-        }
-
-        function getGridPosition(event) {
-            const rect = canvas.getBoundingClientRect();
-            const x = event.clientX - rect.left;
-            const y = event.clientY - rect.top;
-            const col = Math.floor(x / GAP);
-            const row = Math.floor(y / GAP);
-            return { row, col };
         }
 
         function setStatus(message, type = 'info') {
@@ -490,98 +464,319 @@
             statusEl.className = `status ${type}`;
         }
 
-        function selectAlgorithm(algorithm) {
+        // Pathfinding Functions
+        function initPathfindingGrid() {
+            pathfindingGrid = [];
+            for (let i = 0; i < ROWS; i++) {
+                pathfindingGrid[i] = [];
+                for (let j = 0; j < ROWS; j++) {
+                    pathfindingGrid[i][j] = {
+                        row: i,
+                        col: j,
+                        type: 'empty'
+                    };
+                }
+            }
+            drawPathfindingGrid();
+        }
+
+        function drawPathfindingGrid() {
+            pathfindingCtx.clearRect(0, 0, pathfindingCanvas.width, pathfindingCanvas.height);
+
+            for (let i = 0; i < ROWS; i++) {
+                for (let j = 0; j < ROWS; j++) {
+                    const cell = pathfindingGrid[i][j];
+                    const x = j * GAP;
+                    const y = i * GAP;
+
+                    switch (cell.type) {
+                        case 'start':
+                            pathfindingCtx.fillStyle = 'green';
+                            break;
+                        case 'end':
+                            pathfindingCtx.fillStyle = 'red';
+                            break;
+                        case 'wall':
+                            pathfindingCtx.fillStyle = 'darkblue';
+                            break;
+                        case 'visited':
+                            pathfindingCtx.fillStyle = 'skyblue';
+                            break;
+                        case 'path':
+                            pathfindingCtx.fillStyle = 'yellow';
+                            break;
+                        default:
+                            pathfindingCtx.fillStyle = 'white';
+                    }
+
+                    pathfindingCtx.fillRect(x, y, GAP, GAP);
+                    pathfindingCtx.strokeStyle = 'gray';
+                    pathfindingCtx.strokeRect(x, y, GAP, GAP);
+                }
+            }
+        }
+
+        function getPathfindingGridPosition(event) {
+            const rect = pathfindingCanvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            const col = Math.floor(x / GAP);
+            const row = Math.floor(y / GAP);
+            return { row, col };
+        }
+
+        function selectPathfindingAlgorithm(algorithm) {
             if (isRunning) return;
-            
-            currentAlgorithm = algorithm;
+            currentPathfindingAlgorithm = algorithm;
             document.querySelectorAll('.algo-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
             event.target.classList.add('active');
-            
-            // Update algorithm info
-            const infoEl = document.getElementById('algorithm-info');
-            infoEl.innerHTML = algorithmInfo[algorithm];
-            
             setStatus(`${algorithm.toUpperCase()} algorithm selected`, 'info');
         }
 
-        async function startVisualization() {
+        async function startPathfinding() {
             if (isRunning || !start || !end) {
                 setStatus('Please set both start and end points!', 'error');
                 return;
             }
-            
+
             isRunning = true;
-            setStatus(`Running ${currentAlgorithm.toUpperCase()} algorithm...`, 'info');
-            
+            setStatus(`Running ${currentPathfindingAlgorithm.toUpperCase()} algorithm...`, 'info');
+
             // Clear previous visualization
             for (let i = 0; i < ROWS; i++) {
                 for (let j = 0; j < ROWS; j++) {
-                    if (grid[i][j].type === 'visited' || grid[i][j].type === 'path') {
-                        grid[i][j].type = 'empty';
+                    if (pathfindingGrid[i][j].type === 'visited' || pathfindingGrid[i][j].type === 'path') {
+                        pathfindingGrid[i][j].type = 'empty';
                     }
                 }
             }
-            drawGrid();
-            
-            // Create a deep copy of grid for algorithm
-            const gridCopy = grid.map(row => 
-                row.map(cell => ({ ...cell }))
-            );
-            
-            let result;
-            if (currentAlgorithm === 'dijkstra') {
-                result = dijkstraAlgorithm(gridCopy, start, end);
-            } else {
-                result = aStarAlgorithm(gridCopy, start, end);
+            drawPathfindingGrid();
+
+            try {
+                const endpoint = `/api/${currentPathfindingAlgorithm}`;
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        grid: { walls: walls },
+                        start: start,
+                        end: end
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    await animatePathfinding(result.visited, result.path);
+                    setStatus(`${currentPathfindingAlgorithm.toUpperCase()}: ${result.message}`, 'success');
+                } else {
+                    setStatus(`${currentPathfindingAlgorithm.toUpperCase()}: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                setStatus('Error: Make sure Flask server is running on port 5000', 'error');
             }
-            
-            if (result.success) {
-                await animateVisualization(result.visited, result.path);
-                setStatus(`${currentAlgorithm.toUpperCase()}: ${result.message}`, 'success');
-            } else {
-                setStatus(`${currentAlgorithm.toUpperCase()}: ${result.message}`, 'error');
-            }
-            
+
             isRunning = false;
         }
 
-        async function animateVisualization(visited, path) {
-            // Animate visited cells
+        async function animatePathfinding(visited, path) {
             for (const cell of visited) {
-                grid[cell.row][cell.col].type = 'visited';
-                drawGrid();
+                pathfindingGrid[cell.row][cell.col].type = 'visited';
+                drawPathfindingGrid();
                 await new Promise(resolve => setTimeout(resolve, 20));
             }
-            
-            // Animate path
+
             for (const cell of path) {
-                if (grid[cell.row][cell.col].type !== 'start' && grid[cell.row][cell.col].type !== 'end') {
-                    grid[cell.row][cell.col].type = 'path';
-                    drawGrid();
+                if (pathfindingGrid[cell.row][cell.col].type !== 'start' && pathfindingGrid[cell.row][cell.col].type !== 'end') {
+                    pathfindingGrid[cell.row][cell.col].type = 'path';
+                    drawPathfindingGrid();
                     await new Promise(resolve => setTimeout(resolve, 80));
                 }
             }
         }
 
-        function clearGrid() {
+        function clearPathfindingGrid() {
             if (isRunning) return;
-            
             start = null;
             end = null;
             walls = [];
-            initGrid();
-            setStatus('Grid cleared', 'info');
+            initPathfindingGrid();
+            setStatus('Grid cleared. Click to place start point.', 'info');
         }
 
-        // Mouse event handlers
-        canvas.addEventListener('mousedown', (event) => {
+        // K-Means Functions
+        function updateProgress(current, total) {
+            const progressFill = document.getElementById('progressFill');
+            const iterationText = document.getElementById('iterationText');
+
+            const percentage = total > 0 ? (current / total) * 100 : 0;
+            progressFill.style.width = percentage + '%';
+            iterationText.textContent = `${current}/${total}`;
+        }
+
+        function generateRandomPoints() {
             if (isRunning) return;
-            
-            const pos = getGridPosition(event);
-            const cell = grid[pos.row][pos.col];
-            
+
+            kmeansPoints = [];
+            const numPoints = 50 + Math.floor(Math.random() * 50);
+
+            for (let i = 0; i < numPoints; i++) {
+                kmeansPoints.push({
+                    x: Math.random() * (kmeansCanvas.width - 40) + 20,
+                    y: Math.random() * (kmeansCanvas.height - 40) + 20,
+                    cluster: -1
+                });
+            }
+
+            drawKMeansPoints();
+            setStatus(`Generated ${numPoints} random points. Click "Run K-Means" to cluster them.`, 'info');
+        }
+
+        function clearKMeansCanvas() {
+            if (isRunning) return;
+            kmeansPoints = [];
+            kmeansCentroids = [];
+            kmeansCtx.clearRect(0, 0, kmeansCanvas.width, kmeansCanvas.height);
+            updateProgress(0, 0);
+            setStatus('Canvas cleared. Click to add points or generate random points.', 'info');
+        }
+
+        function drawKMeansPoints() {
+            kmeansCtx.clearRect(0, 0, kmeansCanvas.width, kmeansCanvas.height);
+
+            // Draw points
+            kmeansPoints.forEach(point => {
+                kmeansCtx.beginPath();
+                kmeansCtx.arc(point.x, point.y, 5, 0, 2 * Math.PI);
+
+                if (point.cluster >= 0 && point.cluster < colors.length) {
+                    kmeansCtx.fillStyle = colors[point.cluster];
+                } else {
+                    kmeansCtx.fillStyle = '#888888';
+                }
+
+                kmeansCtx.fill();
+                kmeansCtx.strokeStyle = '#333';
+                kmeansCtx.lineWidth = 1;
+                kmeansCtx.stroke();
+            });
+
+            // Draw centroids
+            kmeansCentroids.forEach((centroid, index) => {
+                kmeansCtx.beginPath();
+                kmeansCtx.arc(centroid.x, centroid.y, 8, 0, 2 * Math.PI);
+                kmeansCtx.fillStyle = '#000000';
+                kmeansCtx.fill();
+                kmeansCtx.strokeStyle = '#fff';
+                kmeansCtx.lineWidth = 2;
+                kmeansCtx.stroke();
+
+                // Draw X mark
+                kmeansCtx.strokeStyle = '#fff';
+                kmeansCtx.lineWidth = 3;
+                kmeansCtx.beginPath();
+                kmeansCtx.moveTo(centroid.x - 4, centroid.y - 4);
+                kmeansCtx.lineTo(centroid.x + 4, centroid.y + 4);
+                kmeansCtx.moveTo(centroid.x + 4, centroid.y - 4);
+                kmeansCtx.lineTo(centroid.x - 4, centroid.y + 4);
+                kmeansCtx.stroke();
+            });
+        }
+
+        function getKMeansCanvasPosition(event) {
+            const rect = kmeansCanvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            return { x, y };
+        }
+
+        async function runKMeans() {
+            if (isRunning) return;
+
+            const k = parseInt(document.getElementById('clusters').value);
+            const maxIter = parseInt(document.getElementById('maxIter').value);
+
+            if (kmeansPoints.length === 0) {
+                setStatus('No points to cluster! Add points by clicking on canvas or generate random points.', 'error');
+                return;
+            }
+
+            if (k <= 0 || k > 8) {
+                setStatus('Number of clusters must be between 1 and 8.', 'error');
+                return;
+            }
+
+            if (k > kmeansPoints.length) {
+                setStatus('Number of clusters cannot exceed number of points.', 'error');
+                return;
+            }
+
+            isRunning = true;
+            setStatus('Running K-Means clustering...', 'info');
+
+            try {
+                const response = await fetch('/api/kmeans', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        points: kmeansPoints,
+                        k: k,
+                        max_iterations: maxIter
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    await animateKMeans(result.iterations);
+                    setStatus(result.message, 'success');
+                } else {
+                    setStatus(result.message, 'error');
+                }
+            } catch (error) {
+                setStatus('Error: Make sure Flask server is running on port 5000', 'error');
+            }
+
+            isRunning = false;
+            updateProgress(0, 0);
+        }
+
+        async function animateKMeans(iterations) {
+            for (let i = 0; i < iterations.length; i++) {
+                updateProgress(i + 1, iterations.length);
+
+                const iteration = iterations[i];
+
+                // Update point clusters
+                kmeansPoints.forEach(point => {
+                    point.cluster = -1; // Reset
+                    for (let j = 0; j < iteration.clusters.length; j++) {
+                        if (iteration.clusters[j].find(p => p.x === point.x && p.y === point.y)) {
+                            point.cluster = j;
+                            break;
+                        }
+                    }
+                });
+
+                // Update centroids
+                kmeansCentroids = iteration.centroids;
+
+                drawKMeansPoints();
+                await new Promise(resolve => setTimeout(resolve, 800));
+            }
+        }
+
+        // Event Listeners
+        pathfindingCanvas.addEventListener('mousedown', (event) => {
+            if (isRunning || currentTab !== 'pathfinding') return;
+
+            const pos = getPathfindingGridPosition(event);
+            const cell = pathfindingGrid[pos.row][pos.col];
+
             if (!start && cell.type === 'empty') {
                 start = pos;
                 cell.type = 'start';
@@ -595,29 +790,39 @@
                 walls.push(pos);
                 isDrawing = true;
             }
-            
-            drawGrid();
+
+            drawPathfindingGrid();
         });
 
-        canvas.addEventListener('mousemove', (event) => {
-            if (isDrawing && !isRunning) {
-                const pos = getGridPosition(event);
-                const cell = grid[pos.row][pos.col];
-                
+        pathfindingCanvas.addEventListener('mousemove', (event) => {
+            if (isDrawing && !isRunning && currentTab === 'pathfinding') {
+                const pos = getPathfindingGridPosition(event);
+                const cell = pathfindingGrid[pos.row][pos.col];
+
                 if (cell.type === 'empty') {
                     cell.type = 'wall';
                     walls.push(pos);
-                    drawGrid();
+                    drawPathfindingGrid();
                 }
             }
         });
 
-        canvas.addEventListener('mouseup', () => {
+        pathfindingCanvas.addEventListener('mouseup', () => {
             isDrawing = false;
         });
 
-        // Initialize the application
-        initGrid();
+        kmeansCanvas.addEventListener('click', (event) => {
+            if (isRunning || currentTab !== 'clustering') return;
+
+            const pos = getKMeansCanvasPosition(event);
+            kmeansPoints.push({ x: pos.x, y: pos.y, cluster: -1 });
+            drawKMeansPoints();
+
+            setStatus(`Added point at (${Math.round(pos.x)}, ${Math.round(pos.y)}). Total points: ${kmeansPoints.length}`, 'info');
+        });
+
+        // Initialize
+        initPathfindingGrid();
         setStatus('Click to place start point', 'info');
     </script>
 </body>
